@@ -1,6 +1,7 @@
 import random
 from collections import Counter
-
+import io
+from PIL import Image
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
@@ -143,7 +144,13 @@ def plot_embeddings(model, idx_to_word, method="pca", num_points=200):
     plt.title(f"{method.upper()} Projection of Word Embeddings")
     plt.grid(True)
     plt.tight_layout()
-    plt.show()
+    # Save plot to a buffer and log to W&B
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png')
+    buf.seek(0)
+    image = Image.open(buf)
+    wandb.log({f"{method}_embedding_plot": wandb.Image(image)})
+    plt.close()  # Close the plot so it doesn't show in notebooks etc.
 
 def main(data_path, vocab_size, embedding_dim, window_size, batch_size, num_epochs, lr, device="cpu", save_path="cbow_model.pth"):
     set_seed(42)
@@ -201,7 +208,7 @@ if __name__ == "__main__":
              embedding_dim=100, # how many dimensions to use to represent each word.
              window_size=4, # how many words to include either side of the target.
              batch_size=256,
-             num_epochs=1, 
+             num_epochs=2, 
              lr=0.01,
              device = "cuda" if torch.cuda.is_available() else "cpu"
              )
