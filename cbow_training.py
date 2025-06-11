@@ -87,7 +87,7 @@ def train_cbow(
 ):
     train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_data, batch_size=batch_size)
-    optimizer = torch.optim.SGD(model.parameters(), lr=lr)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     model.to(device)
     for epoch in range(num_epochs):
         model.train()
@@ -175,7 +175,7 @@ def main(data_path, vocab_size, embedding_dim, window_size, batch_size, num_epoc
     # Generate CBOW data
     cbow_data = generate_cbow_data(tokens, window_size, drop_unknown_targets=True)
     full_dataset = CBOWDataset(cbow_data)
-    train_size = int(0.9 * len(full_dataset))
+    train_size = int(0.95 * len(full_dataset))
     val_size = len(full_dataset) - train_size
     train_dataset, val_dataset = random_split(
         full_dataset,
@@ -204,11 +204,11 @@ def main(data_path, vocab_size, embedding_dim, window_size, batch_size, num_epoc
 
 if __name__ == "__main__":
         main(data_path="text8", 
-             vocab_size=3000, 
-             embedding_dim=100, # how many dimensions to use to represent each word.
+             vocab_size=10000, 
+             embedding_dim=150, # how many dimensions to use to represent each word.
              window_size=4, # how many words to include either side of the target.
-             batch_size=256,
-             num_epochs=2, 
-             lr=0.01,
+             batch_size=1024,
+             num_epochs=10, 
+             lr=0.001,
              device = "cuda" if torch.cuda.is_available() else "cpu"
              )
