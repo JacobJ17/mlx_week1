@@ -26,11 +26,14 @@ def get_hn_item(item_id):
 
 def extract_fields(item_data):
 
+    print(item_data)
+
     result = {
         'title': item_data.get('title', ''),
         'url': item_data.get('url', ''),
         'user': item_data.get('by', ''),
-        'text': re.sub(r'<[^>]+>', '', html.unescape(item_data.get('text', '')))
+        'text': re.sub(r'<[^>]+>', '', html.unescape(item_data.get('text', ''))),
+        'time': item_data.get('time', 0)
     }
 
     return result
