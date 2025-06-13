@@ -169,7 +169,6 @@ def evaluate(model, dataloader, loss_fn, device):
 
 def main(
     cbow_model_path,
-    vocab_path,
     parquet_path,
     batch_size,
     lr,
@@ -240,7 +239,6 @@ def main(
 if __name__ == "__main__":
     main(
         cbow_model_path="cbow_model.pth",
-        vocab_path="output_titles/vocab.pkl",
         parquet_path="hacker_news_ml_ready.parquet",
         batch_size=64,
         lr=1e-3,
