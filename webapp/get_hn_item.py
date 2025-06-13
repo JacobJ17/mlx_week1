@@ -1,8 +1,7 @@
-import requests
-import re
-from urllib.parse import urlparse
 import html
 import re
+import requests
+from urllib.parse import urlparse
 
 def extract_item_id(url):
     parsed = urlparse(url)
