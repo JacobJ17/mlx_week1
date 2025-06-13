@@ -25,6 +25,12 @@ def load_corpus(path):
     words = text.split()
     return words
 
+def load_segmented_corpus(path, delimiter="\n"):
+    with open(path, "r", encoding="utf-8") as f:
+        segments = f.read().strip().split(delimiter)
+    return [segment.strip().split() for segment in segments if segment.strip()]
+
+
 def build_vocab_and_tokens(corpus, vocab_size=10000):
     word_counts = Counter(corpus)
     most_common = word_counts.most_common(vocab_size - 1)
@@ -43,6 +49,21 @@ def generate_cbow_data(tokens, window_size, drop_unknown_targets=True):
             continue
         data.append((context, target))
     return data
+
+def generate_segmented_cbow_data(token_segments, vocab, window_size, drop_unknown_targets=True):
+    data = []
+    for segment in token_segments:
+        tokens = [vocab.get(word, 0) for word in segment]
+        if len(tokens) < 2 * window_size + 1:
+            continue  # Skip too-short segments
+        for i in range(window_size, len(tokens) - window_size):
+            context = tokens[i - window_size : i] + tokens[i + 1 : i + window_size + 1]
+            target = tokens[i]
+            if drop_unknown_targets and target == 0:
+                continue
+            data.append((context, target))
+    return data
+
 
 class CBOWDataset(Dataset):
     def __init__(self, cbow_data):
@@ -152,7 +173,7 @@ def plot_embeddings(model, idx_to_word, method="pca", num_points=200):
     wandb.log({f"{method}_embedding_plot": wandb.Image(image)})
     plt.close()  # Close the plot so it doesn't show in notebooks etc.
 
-def main(data_path, vocab_size, embedding_dim, window_size, batch_size, num_epochs, lr, device="cpu", save_path="cbow_model.pth"):
+def main(data_path, vocab_size, embedding_dim, batch_size, num_epochs, lr, device="cpu", save_path="cbow_model.pth"):
     set_seed(42)
     # Initialize Weights & Biases
     wandb.init(
@@ -160,7 +181,7 @@ def main(data_path, vocab_size, embedding_dim, window_size, batch_size, num_epoc
         config={
             "vocab_size": vocab_size,
             "embedding_dim": embedding_dim,
-            "window_size": window_size,
+            # "window_size": window_size,
             "batch_size": batch_size,
             "num_epochs": num_epochs,
             "lr": lr
@@ -168,12 +189,28 @@ def main(data_path, vocab_size, embedding_dim, window_size, batch_size, num_epoc
     )
 
     # Load and preprocess the corpus
-    print("Loading corpus...")
-    words = load_corpus(data_path)
-    tokens, vocab, idx_to_word = build_vocab_and_tokens(words, vocab_size=vocab_size)
-    print(f"Vocabulary size: {len(vocab)}")
-    # Generate CBOW data
-    cbow_data = generate_cbow_data(tokens, window_size, drop_unknown_targets=True)
+    words1 = load_corpus("text8")
+    segments2 = load_segmented_corpus("output_hn_titles_delimited/tokenized.txt", delimiter="<TITLE>")
+    words2 = [word for segment in segments2 for word in segment]  # flatten segments
+    segments3 = load_segmented_corpus("output_hn_comments_gt5_replies/tokenized.txt", delimiter="<COMMENT>")
+    words3 = [word for segment in segments3 for word in segment]  # flatten segments
+
+    all_words = words1 + words2 + words3
+    tokens, vocab, idx_to_word = build_vocab_and_tokens(all_words, vocab_size=vocab_size)
+    tokens1 = [vocab.get(w, 0) for w in words1]
+    cbow_data1 = generate_cbow_data(tokens1, window_size=4)
+    cbow_data2 = generate_segmented_cbow_data(segments2, vocab, window_size=3)
+    cbow_data3 = generate_segmented_cbow_data(segments3, vocab, window_size=4)
+
+    cbow_data = cbow_data1 + cbow_data2 + cbow_data3
+
+
+    # print("Loading corpus...")
+    # words = load_corpus(data_path)
+    # tokens, vocab, idx_to_word = build_vocab_and_tokens(words, vocab_size=vocab_size)
+    # print(f"Vocabulary size: {len(vocab)}")
+    # # Generate CBOW data
+    # cbow_data = generate_cbow_data(tokens, window_size, drop_unknown_targets=True)
     full_dataset = CBOWDataset(cbow_data)
     train_size = int(0.95 * len(full_dataset))
     val_size = len(full_dataset) - train_size
@@ -195,7 +232,13 @@ def main(data_path, vocab_size, embedding_dim, window_size, batch_size, num_epoc
         device=device
     )
     # Save the trained model
-    torch.save(model.state_dict(), save_path)
+    torch.save({
+        "model_state_dict": model.state_dict(),
+        "vocab_size": vocab_size,
+        "embedding_dim": embedding_dim,
+        "vocab": vocab,
+        "idx_to_word": idx_to_word
+    }, save_path)
     print(f"Model saved to {save_path}")
 
     # Visualize embeddings:
@@ -204,9 +247,8 @@ def main(data_path, vocab_size, embedding_dim, window_size, batch_size, num_epoc
 
 if __name__ == "__main__":
         main(data_path="text8", 
-             vocab_size=10000, 
+             vocab_size=30000,
              embedding_dim=150, # how many dimensions to use to represent each word.
-             window_size=4, # how many words to include either side of the target.
              batch_size=1024,
              num_epochs=10, 
              lr=0.001,
