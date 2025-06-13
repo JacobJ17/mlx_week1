@@ -227,11 +227,13 @@ def main(
     for epoch in range(num_epochs):
         train_loss = train(model, train_loader, optimizer, loss_fn, device)
         val_loss = evaluate(model, val_loader, loss_fn, device)
-        print(f"Epoch {epoch+1}: train_loss={train_loss:.4f}, val_loss={val_loss:.4f}")        wandb.log({
+        print(f"Epoch {epoch+1}: train_loss={train_loss:.4f}, val_loss={val_loss:.4f}")        
+        
+        wandb.log({
         "train_loss": train_loss,
         "val_loss": val_loss,
         "epoch": epoch + 1
-    })
+        })
 
     wandb.finish()
 
